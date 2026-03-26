@@ -335,8 +335,204 @@
                 Vessel Tracking
             </a>
 </div>
-<div class="text-slate-500 text-[10px] text-center md:text-right">
+    <div class="text-slate-500 text-[10px] text-center md:text-right">
             © 2024 Tuan Trinh. Maritime Strategy &amp; Global Logistics Excellence.
         </div>
 </footer>
+
+<!-- Chatbot Integration -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+/* Chat Markdown Custom Styles */
+.chat-markdown p { line-height: 1.6; margin-bottom: 0.5rem; }
+.chat-markdown ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.5rem; }
+.chat-markdown li { margin-bottom: 0.25rem; }
+.chat-markdown strong { font-weight: bold; color: #775a19; }
+.chat-markdown code { background-color: #1e1e1e; color: #d4d4d4; font-family: 'Fira Code', Consolas, monospace; padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-size: 0.85em; }
+.chat-markdown blockquote { border-left: 3px solid #775a19; margin: 0.5rem 0; padding-left: 1rem; color: #666; font-style: italic; }
+
+/* Typing Animation */
+.typing-indicator { display: flex; align-items: center; gap: 4px; padding: 8px 12px; border-radius: 12px; width: fit-content; }
+.typing-dot { width: 6px; height: 6px; background: #666; border-radius: 50%; animation: typing 1.4s infinite ease-in-out both; }
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+@keyframes typing {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+/* Glassmorphism */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.dark .glass-panel {
+    background: rgba(30,30,30,0.7);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+</style>
+
+<div id="chatbot-container" class="fixed bottom-6 right-6 z-[9999] flex flex-col items-end hidden">
+    <!-- Chat Window -->
+    <div id="chat-window" class="glass-panel shadow-2xl rounded-2xl w-80 sm:w-96 flex flex-col overflow-hidden mb-4 transition-all duration-300 origin-bottom-right scale-0 opacity-0">
+        <!-- Header -->
+        <div class="bg-primary/90 text-white p-4 flex justify-between items-center backdrop-blur-md">
+            <div class="flex items-center gap-2">
+                <div class="relative">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                </div>
+                <span class="font-bold tracking-wide">Trinh Bot AI</span>
+            </div>
+            <div class="flex gap-3 text-white/80">
+                <button id="chat-refresh" class="hover:text-white transition-colors" title="Refresh Chat">
+                    <span class="material-symbols-outlined text-[20px]">refresh</span>
+                </button>
+                <button id="chat-close" class="hover:text-white transition-colors" title="Close">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Messages -->
+        <div id="chat-messages" class="flex-1 p-4 h-80 overflow-y-auto flex flex-col gap-3 bg-white/40">
+            <!-- Initial Message -->
+        </div>
+        
+        <!-- Input -->
+        <div class="p-3 bg-white/60 border-t border-white/40 flex items-center gap-2">
+            <input type="text" id="chat-input" class="flex-1 bg-white border border-outline-variant/30 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all" placeholder="Nhập tin nhắn...">
+            <button id="chat-send" class="w-8 h-8 rounded-full bg-secondary text-white flex items-center justify-center hover:bg-secondary-container hover:text-on-secondary-container transition-colors disabled:opacity-50">
+                <span class="material-symbols-outlined text-[18px]">send</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Floating Button -->
+    <button id="chat-toggle" class="w-14 h-14 rounded-full bg-secondary text-white flex items-center justify-center shadow-2xl hover:scale-105 transition-transform group border border-white/20">
+        <span class="material-symbols-outlined text-2xl group-hover:hidden">forum</span>
+        <span class="material-symbols-outlined text-2xl hidden group-hover:block">smart_toy</span>
+    </button>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const chatContainer = document.getElementById('chatbot-container');
+    const chatToggle = document.getElementById('chat-toggle');
+    const chatWindow = document.getElementById('chat-window');
+    const chatClose = document.getElementById('chat-close');
+    const chatRefresh = document.getElementById('chat-refresh');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const chatSend = document.getElementById('chat-send');
+
+    // Make sure chatbot container is visible
+    chatContainer.classList.remove('hidden');
+
+    const defaultGreeting = "Xin chào! Mình là **Trinh Bot AI**.\nMình có thể giúp gì cho chiến lược hàng hải và logistics của bạn hôm nay?";
+
+    function appendMessage(text, isUser = false) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `max-w-[85%] rounded-2xl px-4 py-2 text-sm ${isUser ? 'bg-secondary text-white self-end rounded-br-sm' : 'glass-panel text-on-surface self-start rounded-bl-sm chat-markdown'}`;
+        
+        if (isUser) {
+            msgDiv.textContent = text;
+        } else {
+            msgDiv.innerHTML = marked.parse(text);
+        }
+        
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function showTypingIndicator() {
+        const indicator = document.createElement('div');
+        indicator.id = 'typing-indicator';
+        indicator.className = 'max-w-[85%] glass-panel self-start rounded-2xl rounded-bl-sm px-4 py-3 flex flex-col gap-1';
+        indicator.innerHTML = `
+            <span class="text-[10px] text-on-surface-variant font-medium">Đang nhập...</span>
+            <div class="typing-indicator bg-transparent p-0 m-0">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        `;
+        chatMessages.appendChild(indicator);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+
+    function initChat() {
+        chatMessages.innerHTML = '';
+        appendMessage(defaultGreeting, false);
+    }
+
+    // Toggle Chat Window
+    const toggleChat = () => {
+        if (chatWindow.classList.contains('scale-0')) {
+            chatWindow.classList.remove('scale-0', 'opacity-0');
+            chatWindow.classList.add('scale-100', 'opacity-100');
+            if (chatMessages.innerHTML.trim() === '') {
+                initChat();
+            }
+        } else {
+            chatWindow.classList.add('scale-0', 'opacity-0');
+            chatWindow.classList.remove('scale-100', 'opacity-100');
+        }
+    };
+
+    chatToggle.addEventListener('click', toggleChat);
+    chatClose.addEventListener('click', toggleChat);
+
+    // Refresh Chat Logic
+    chatRefresh.addEventListener('click', () => {
+        const icon = chatRefresh.querySelector('.material-symbols-outlined');
+        icon.classList.add('animate-spin');
+        
+        chatMessages.innerHTML = '';
+        appendMessage(defaultGreeting, false);
+
+        setTimeout(() => {
+            icon.classList.remove('animate-spin');
+        }, 500);
+    });
+
+    // Handle Sending Messages
+    const handleSend = () => {
+        const text = chatInput.value.trim();
+        if (!text) return;
+
+        appendMessage(text, true);
+        chatInput.value = '';
+        chatInput.disabled = true;
+        chatSend.disabled = true;
+
+        showTypingIndicator();
+
+        // Simulate AI response
+        setTimeout(() => {
+            removeTypingIndicator();
+            chatInput.disabled = false;
+            chatSend.disabled = false;
+            chatInput.focus();
+            
+            appendMessage(`Dưới đây là một ví dụ sử dụng Markdown để mô phỏng API trả về:\n\n* **Điểm mạnh:** UI/UX rất tốt, hiệu ứng *Glassmorphism*.\n* **Code:** Mượt mà và tích hợp CSS đầy đủ\n\n\`\`\`javascript\nconsole.log('AI đã phản hồi!');\n\`\`\`\n\n> "Sự đơn giản là đỉnh cao của sự tinh tế." - Hãy tiếp tục phát huy!`, false);
+        }, 2000);
+    };
+
+    chatSend.addEventListener('click', handleSend);
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleSend();
+        }
+    });
+});
+</script>
 </body></html>
