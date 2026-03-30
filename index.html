@@ -343,196 +343,380 @@
 <!-- Chatbot Integration -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
-/* Chat Markdown Custom Styles */
-.chat-markdown p { line-height: 1.6; margin-bottom: 0.5rem; }
-.chat-markdown ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.5rem; }
-.chat-markdown li { margin-bottom: 0.25rem; }
-.chat-markdown strong { font-weight: bold; color: #775a19; }
-.chat-markdown code { background-color: #1e1e1e; color: #d4d4d4; font-family: 'Fira Code', Consolas, monospace; padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-size: 0.85em; }
-.chat-markdown blockquote { border-left: 3px solid #775a19; margin: 0.5rem 0; padding-left: 1rem; color: #666; font-style: italic; }
+/* ── Chat Markdown Styles ─────────────────────────────────── */
+.chat-markdown p            { line-height: 1.6; margin-bottom: 0.5rem; }
+.chat-markdown ul           { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.5rem; }
+.chat-markdown li           { margin-bottom: 0.25rem; }
+.chat-markdown strong       { font-weight: bold; color: #775a19; }
+.chat-markdown code         { background: #1e1e1e; color: #d4d4d4; font-family: 'Fira Code', Consolas, monospace; padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-size: 0.85em; }
+.chat-markdown pre code     { display: block; padding: 0.75rem; overflow-x: auto; }
+.chat-markdown blockquote   { border-left: 3px solid #775a19; margin: 0.5rem 0; padding-left: 1rem; color: #666; font-style: italic; }
+.chat-markdown h2, .chat-markdown h3 { font-weight: 700; margin: 0.5rem 0 0.25rem; }
 
-/* Typing Animation */
-.typing-indicator { display: flex; align-items: center; gap: 4px; padding: 8px 12px; border-radius: 12px; width: fit-content; }
-.typing-dot { width: 6px; height: 6px; background: #666; border-radius: 50%; animation: typing 1.4s infinite ease-in-out both; }
+/* ── Typing Animation ─────────────────────────────────────── */
+.typing-dot { width: 6px; height: 6px; background: #888; border-radius: 50%; animation: chatTyping 1.4s infinite ease-in-out both; }
 .typing-dot:nth-child(1) { animation-delay: -0.32s; }
 .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-@keyframes typing {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
-}
+@keyframes chatTyping { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
 
-/* Glassmorphism */
+/* ── Glassmorphism Panel ──────────────────────────────────── */
 .glass-panel {
-    background: rgba(255, 255, 255, 0.65);
+    background: rgba(255,255,255,0.65);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(255,255,255,0.4);
 }
-.dark .glass-panel {
-    background: rgba(30,30,30,0.7);
-    border: 1px solid rgba(255,255,255,0.1);
+
+/* ── Chat message fade-in ─────────────────────────────────── */
+@keyframes msgFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.chat-msg { animation: msgFadeIn 0.25s ease-out both; }
+
+/* ── Responsive mobile ────────────────────────────────────── */
+@media (max-width: 480px) {
+    #chat-window { width: calc(100vw - 2rem) !important; right: 1rem; }
 }
 </style>
 
+<!-- ── Chatbot Widget HTML ──────────────────────────────────────── -->
 <div id="chatbot-container" class="fixed bottom-6 right-6 z-[9999] flex flex-col items-end hidden">
+
     <!-- Chat Window -->
-    <div id="chat-window" class="glass-panel shadow-2xl rounded-2xl w-80 sm:w-96 flex flex-col overflow-hidden mb-4 transition-all duration-300 origin-bottom-right scale-0 opacity-0">
+    <div id="chat-window"
+         class="glass-panel shadow-2xl rounded-2xl w-80 sm:w-96 flex flex-col overflow-hidden mb-4 transition-all duration-300 origin-bottom-right scale-0 opacity-0"
+         style="max-height: 80vh;">
+
         <!-- Header -->
-        <div class="bg-primary/90 text-white p-4 flex justify-between items-center backdrop-blur-md">
-            <div class="flex items-center gap-2">
-                <div class="relative">
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+        <div class="bg-slate-900/90 text-white p-4 flex justify-between items-center backdrop-blur-md flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <!-- Online dot -->
+                <span class="relative flex h-2.5 w-2.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                </span>
+                <div>
+                    <p class="font-bold text-sm leading-none">Trinh Bot AI</p>
+                    <p class="text-[10px] text-green-400 leading-none mt-0.5">Online · AI Assistant</p>
                 </div>
-                <span class="font-bold tracking-wide">Trinh Bot AI</span>
             </div>
-            <div class="flex gap-3 text-white/80">
-                <button id="chat-refresh" class="hover:text-white transition-colors" title="Refresh Chat">
-                    <span class="material-symbols-outlined text-[20px]">refresh</span>
+            <div class="flex gap-2 text-white/70">
+                <button id="chat-refresh" class="p-1.5 rounded-lg hover:bg-white/10 hover:text-white transition-all" title="Reset hội thoại">
+                    <span class="material-symbols-outlined text-[18px] block">refresh</span>
                 </button>
-                <button id="chat-close" class="hover:text-white transition-colors" title="Close">
-                    <span class="material-symbols-outlined text-[20px]">close</span>
+                <button id="chat-close" class="p-1.5 rounded-lg hover:bg-white/10 hover:text-white transition-all" title="Đóng">
+                    <span class="material-symbols-outlined text-[18px] block">close</span>
                 </button>
             </div>
         </div>
-        
-        <!-- Messages -->
-        <div id="chat-messages" class="flex-1 p-4 h-80 overflow-y-auto flex flex-col gap-3 bg-white/40">
-            <!-- Initial Message -->
+
+        <!-- Messages Area -->
+        <div id="chat-messages" class="flex-1 p-4 overflow-y-auto flex flex-col gap-3" style="background: rgba(248,249,252,0.7); min-height: 260px; max-height: 360px;">
+            <!-- Messages injected here -->
         </div>
-        
-        <!-- Input -->
-        <div class="p-3 bg-white/60 border-t border-white/40 flex items-center gap-2">
-            <input type="text" id="chat-input" class="flex-1 bg-white border border-outline-variant/30 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all" placeholder="Nhập tin nhắn...">
-            <button id="chat-send" class="w-8 h-8 rounded-full bg-secondary text-white flex items-center justify-center hover:bg-secondary-container hover:text-on-secondary-container transition-colors disabled:opacity-50">
-                <span class="material-symbols-outlined text-[18px]">send</span>
-            </button>
+
+        <!-- Input Bar -->
+        <div class="p-3 flex-shrink-0" style="background: rgba(255,255,255,0.75); border-top: 1px solid rgba(255,255,255,0.5);">
+            <div class="flex items-center gap-2">
+                <input type="text" id="chat-input"
+                       class="flex-1 bg-white/80 border border-slate-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600 transition-all placeholder:text-slate-400"
+                       placeholder="Nhập câu hỏi của bạn...">
+                <button id="chat-send"
+                        class="w-9 h-9 flex-shrink-0 rounded-full bg-secondary text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all disabled:opacity-40 shadow-md">
+                    <span class="material-symbols-outlined text-[18px]">send</span>
+                </button>
+            </div>
+            <p class="text-[10px] text-slate-400 text-center mt-2">Powered by OpenRouter · z-ai/glm-4.5</p>
         </div>
     </div>
-    
-    <!-- Floating Button -->
-    <button id="chat-toggle" class="w-14 h-14 rounded-full bg-secondary text-white flex items-center justify-center shadow-2xl hover:scale-105 transition-transform group border border-white/20">
-        <span class="material-symbols-outlined text-2xl group-hover:hidden">forum</span>
-        <span class="material-symbols-outlined text-2xl hidden group-hover:block">smart_toy</span>
+
+    <!-- Floating Toggle Button -->
+    <button id="chat-toggle"
+            class="w-14 h-14 rounded-full bg-secondary text-white flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all border-2 border-white/30 relative">
+        <span id="chat-toggle-icon-open" class="material-symbols-outlined text-2xl">forum</span>
+        <span id="chat-toggle-icon-close" class="material-symbols-outlined text-2xl hidden">close</span>
+        <!-- Pulse ring -->
+        <span class="absolute inset-0 rounded-full bg-secondary opacity-40 animate-ping" style="animation-duration: 2.5s;"></span>
     </button>
 </div>
 
+<!-- ── Chatbot Logic ─────────────────────────────────────────────── -->
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const chatContainer = document.getElementById('chatbot-container');
-    const chatToggle = document.getElementById('chat-toggle');
-    const chatWindow = document.getElementById('chat-window');
-    const chatClose = document.getElementById('chat-close');
-    const chatRefresh = document.getElementById('chat-refresh');
-    const chatMessages = document.getElementById('chat-messages');
-    const chatInput = document.getElementById('chat-input');
-    const chatSend = document.getElementById('chat-send');
+(function () {
+    'use strict';
 
-    // Make sure chatbot container is visible
-    chatContainer.classList.remove('hidden');
+    /* ══════════════════════════════════════════════════════════
+       1. CONFIG
+    ══════════════════════════════════════════════════════════ */
+    const CONFIG = {
+        apiUrl  : 'https://openrouter.ai/api/v1/chat/completions',
+        apiKey  : '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',
+        model   : 'z-ai/glm-4.5-air:free',
+        greeting: 'Xin chào! Tôi là **Trinh Bot AI** 👋\n\nTôi là trợ lý AI cá nhân của **Tuan Trinh** — chuyên gia tư vấn hàng hải, logistics và tự động hóa AI với hơn 30 năm kinh nghiệm.\n\nTôi có thể hỗ trợ bạn về:\n- 🚢 **Vận tải biển & phát triển cảng**\n- 🤖 **Tự động hóa AI trong logistics**\n- 📊 **Chiến lược kinh doanh logistics**\n\nBạn muốn tìm hiểu điều gì hôm nay?',
+    };
 
-    const defaultGreeting = "Xin chào! Mình là **Trinh Bot AI**.\nMình có thể giúp gì cho chiến lược hàng hải và logistics của bạn hôm nay?";
+    /* ══════════════════════════════════════════════════════════
+       2. KNOWLEDGE BASE (mirrors chatbot_data.txt)
+    ══════════════════════════════════════════════════════════ */
+    const KNOWLEDGE_BASE = `
+[IDENTITY]
+Name: Tuan Trinh
+Role: Shipping Logistics & AI Consultant
+Experience: 30+ years in maritime strategy and global logistics.
 
-    function appendMessage(text, isUser = false) {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = `max-w-[85%] rounded-2xl px-4 py-2 text-sm ${isUser ? 'bg-secondary text-white self-end rounded-br-sm' : 'glass-panel text-on-surface self-start rounded-bl-sm chat-markdown'}`;
-        
-        if (isUser) {
-            msgDiv.textContent = text;
-        } else {
-            msgDiv.innerHTML = marked.parse(text);
-        }
-        
-        chatMessages.appendChild(msgDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
+[EXPERTISE]
+- Shipping & Ocean Freight
+- Port operations & Seaport Development (terminal layout, tech integration)
+- Ro-Ro (Roll-on/Roll-off) & Bulk cargo operations
+- Warehousing & 3PL management
+- AI automation for logistics (demand forecasting, route optimization)
+- Deep-sea Terminal planning & Integrated 3PL Hubs
+- Feeder Networks & South East Asia logistics market
 
-    function showTypingIndicator() {
-        const indicator = document.createElement('div');
-        indicator.id = 'typing-indicator';
-        indicator.className = 'max-w-[85%] glass-panel self-start rounded-2xl rounded-bl-sm px-4 py-3 flex flex-col gap-1';
-        indicator.innerHTML = `
-            <span class="text-[10px] text-on-surface-variant font-medium">Đang nhập...</span>
-            <div class="typing-indicator bg-transparent p-0 m-0">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            </div>
-        `;
-        chatMessages.appendChild(indicator);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
+[SERVICES]
+- Logistics consulting & advisory
+- Seaport development & master planning
+- AI automation integration for logistics companies
+- Business strategy & market penetration
+- Operations management & lean port optimization
+- Terminal layout design & technology integration
+- Client lifecycle management for 3PLs
 
-    function removeTypingIndicator() {
-        const indicator = document.getElementById('typing-indicator');
-        if (indicator) {
-            indicator.remove();
-        }
-    }
+[TARGET CUSTOMERS]
+- Logistics companies & 3PL providers
+- Shipping lines & freight forwarders
+- Port authorities
+- SMEs entering the logistics space
 
-    function initChat() {
-        chatMessages.innerHTML = '';
-        appendMessage(defaultGreeting, false);
-    }
+[PHILOSOPHY]
+"The Horizon Line" — where immediate logistical needs meet long-term strategic growth.
 
-    // Toggle Chat Window
-    const toggleChat = () => {
-        if (chatWindow.classList.contains('scale-0')) {
-            chatWindow.classList.remove('scale-0', 'opacity-0');
-            chatWindow.classList.add('scale-100', 'opacity-100');
-            if (chatMessages.innerHTML.trim() === '') {
-                initChat();
+[CASE STUDIES]
+1. Gateway Expansion Project — Redesigned terminal flow for a major SEA feeder port → +22% throughput.
+2. Intermodal 3PL Synergy — Cold-chain logistics with rail-port connectivity for a European retailer → +30% efficiency.
+
+[CONTACT]
+Email: qtuan2k.sgp@gmail.com
+Phone: +84 913 456 789
+Location: Ho Chi Minh City, Vietnam
+Availability: Currently accepting new consulting engagements
+
+[FAQ]
+Q: Who are you?
+A: I am Trinh Bot AI, personal AI assistant for Tuan Trinh, maritime strategy expert with 30+ years experience.
+Q: How to contact Tuan?
+A: Email qtuan2k.sgp@gmail.com or call +84 913 456 789.
+Q: What services does Tuan offer?
+A: Logistics consulting, seaport development, AI automation, operations management, business strategy.
+`;
+
+    /* ══════════════════════════════════════════════════════════
+       3. SYSTEM PROMPT (built from Knowledge Base)
+    ══════════════════════════════════════════════════════════ */
+    const SYSTEM_PROMPT = `You are Trinh Bot AI — the exclusive AI assistant for Tuan Trinh, a world-class maritime strategy and global logistics consultant.
+
+Your ONLY knowledge source is the Knowledge Base below. Never fabricate information.
+
+--- KNOWLEDGE BASE ---
+${KNOWLEDGE_BASE}
+--- END KNOWLEDGE BASE ---
+
+STRICT RESPONSE RULES:
+1. Always reply in **Markdown** (use ##, bold, bullet lists, blockquotes, code blocks as appropriate).
+2. Be professional, warm, and practical.
+3. End every response with: "Bạn có muốn tôi hỗ trợ thêm điều gì không? 😊" (or English if user writes in English).
+4. If question is outside Knowledge Base scope, respond: "Tôi chưa có đủ thông tin về chủ đề này. Để được tư vấn chuyên sâu, vui lòng liên hệ:\n- 📧 **Email:** qtuan2k.sgp@gmail.com\n- 📞 **Phone:** +84 913 456 789"
+5. Never discuss politics, medicine, unrelated personal finance, or any off-domain topic.
+6. Detect user language (Vietnamese or English) and reply in the same language.`;
+
+    /* ══════════════════════════════════════════════════════════
+       4. STATE
+    ══════════════════════════════════════════════════════════ */
+    let conversationHistory = [];
+    let isChatOpen = false;
+
+    /* ══════════════════════════════════════════════════════════
+       5. INIT — wait for DOM ready
+    ══════════════════════════════════════════════════════════ */
+    document.addEventListener('DOMContentLoaded', () => {
+        const chatContainer   = document.getElementById('chatbot-container');
+        const chatToggle      = document.getElementById('chat-toggle');
+        const chatWindow      = document.getElementById('chat-window');
+        const chatClose       = document.getElementById('chat-close');
+        const chatRefresh     = document.getElementById('chat-refresh');
+        const chatMessages    = document.getElementById('chat-messages');
+        const chatInput       = document.getElementById('chat-input');
+        const chatSend        = document.getElementById('chat-send');
+        const iconOpen        = document.getElementById('chat-toggle-icon-open');
+        const iconClose       = document.getElementById('chat-toggle-icon-close');
+
+        // Reveal floating widget
+        chatContainer.classList.remove('hidden');
+
+        /* ── UI: Append message bubble ──────────────────────── */
+        function appendMessage(text, isUser = false) {
+            const wrap = document.createElement('div');
+            wrap.className = 'flex chat-msg ' + (isUser ? 'justify-end' : 'justify-start');
+
+            const bubble = document.createElement('div');
+            bubble.className = [
+                'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
+                isUser
+                    ? 'bg-secondary text-white rounded-br-none'
+                    : 'glass-panel text-slate-800 rounded-bl-none chat-markdown'
+            ].join(' ');
+
+            // User messages as plain text; AI responses as rendered Markdown
+            if (isUser) {
+                bubble.textContent = text;
+            } else {
+                bubble.innerHTML = marked.parse(text);
             }
-        } else {
-            chatWindow.classList.add('scale-0', 'opacity-0');
-            chatWindow.classList.remove('scale-100', 'opacity-100');
+
+            wrap.appendChild(bubble);
+            chatMessages.appendChild(wrap);
+            chatMessages.scrollTop = chatMessages.scrollHeight; // auto-scroll
+            return wrap;
         }
-    };
 
-    chatToggle.addEventListener('click', toggleChat);
-    chatClose.addEventListener('click', toggleChat);
-
-    // Refresh Chat Logic
-    chatRefresh.addEventListener('click', () => {
-        const icon = chatRefresh.querySelector('.material-symbols-outlined');
-        icon.classList.add('animate-spin');
-        
-        chatMessages.innerHTML = '';
-        appendMessage(defaultGreeting, false);
-
-        setTimeout(() => {
-            icon.classList.remove('animate-spin');
-        }, 500);
-    });
-
-    // Handle Sending Messages
-    const handleSend = () => {
-        const text = chatInput.value.trim();
-        if (!text) return;
-
-        appendMessage(text, true);
-        chatInput.value = '';
-        chatInput.disabled = true;
-        chatSend.disabled = true;
-
-        showTypingIndicator();
-
-        // Simulate AI response
-        setTimeout(() => {
-            removeTypingIndicator();
-            chatInput.disabled = false;
-            chatSend.disabled = false;
-            chatInput.focus();
-            
-            appendMessage(`Dưới đây là một ví dụ sử dụng Markdown để mô phỏng API trả về:\n\n* **Điểm mạnh:** UI/UX rất tốt, hiệu ứng *Glassmorphism*.\n* **Code:** Mượt mà và tích hợp CSS đầy đủ\n\n\`\`\`javascript\nconsole.log('AI đã phản hồi!');\n\`\`\`\n\n> "Sự đơn giản là đỉnh cao của sự tinh tế." - Hãy tiếp tục phát huy!`, false);
-        }, 2000);
-    };
-
-    chatSend.addEventListener('click', handleSend);
-    chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            handleSend();
+        /* ── UI: Typing indicator ───────────────────────────── */
+        function showTypingIndicator() {
+            const wrap = document.createElement('div');
+            wrap.id = 'typing-indicator';
+            wrap.className = 'flex justify-start chat-msg';
+            wrap.innerHTML = `
+                <div class="glass-panel rounded-2xl rounded-bl-none px-4 py-3 shadow-sm">
+                    <p class="text-[10px] text-slate-400 mb-1.5 font-medium">Đang nhập...</p>
+                    <div class="flex items-center gap-1">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>`;
+            chatMessages.appendChild(wrap);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         }
-    });
-});
+
+        function removeTypingIndicator() {
+            const el = document.getElementById('typing-indicator');
+            if (el) el.remove();
+        }
+
+        /* ── UI: Init / reset chat ──────────────────────────── */
+        function initChat() {
+            chatMessages.innerHTML = '';
+            conversationHistory = [];
+            appendMessage(CONFIG.greeting, false);
+        }
+
+        /* ── UI: Toggle open/close ──────────────────────────── */
+        function toggleChat() {
+            isChatOpen = !isChatOpen;
+            if (isChatOpen) {
+                chatWindow.classList.remove('scale-0', 'opacity-0');
+                chatWindow.classList.add('scale-100', 'opacity-100');
+                iconOpen.classList.add('hidden');
+                iconClose.classList.remove('hidden');
+                if (!chatMessages.children.length) initChat();
+                setTimeout(() => chatInput.focus(), 300);
+            } else {
+                chatWindow.classList.add('scale-0', 'opacity-0');
+                chatWindow.classList.remove('scale-100', 'opacity-100');
+                iconOpen.classList.remove('hidden');
+                iconClose.classList.add('hidden');
+            }
+        }
+
+        chatToggle.addEventListener('click', toggleChat);
+        chatClose.addEventListener('click', toggleChat);
+
+        /* ── UI: Refresh button ─────────────────────────────── */
+        chatRefresh.addEventListener('click', () => {
+            const icon = chatRefresh.querySelector('.material-symbols-outlined');
+            // 1. Start spin animation
+            icon.classList.add('animate-spin');
+            // 2. Clear messages + history
+            chatMessages.innerHTML = '';
+            conversationHistory = [];
+            // 3. Show greeting
+            appendMessage(CONFIG.greeting, false);
+            // 4. Stop spin after exactly 500ms
+            setTimeout(() => icon.classList.remove('animate-spin'), 500);
+        });
+
+        /* ── API: Call OpenRouter ───────────────────────────── */
+        async function callOpenRouter(userMessage) {
+            // Add user turn to rolling multi-turn history
+            conversationHistory.push({ role: 'user', content: userMessage });
+
+            const response = await fetch(CONFIG.apiUrl, {
+                method : 'POST',
+                headers: {
+                    'Content-Type' : 'application/json',
+                    'Authorization': `Bearer ${CONFIG.apiKey}`,
+                    'HTTP-Referer' : 'https://tuantrinh.expert', // Hardcoded valid URL to prevent invalid character errors
+                    'X-Title'      : 'Tuan Trinh Landing Page'
+                },
+                body: JSON.stringify({
+                    model   : CONFIG.model,
+                    messages: [
+                        { role: 'system', content: SYSTEM_PROMPT },
+                        ...conversationHistory
+                    ]
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err?.error?.message || `HTTP ${response.status}`);
+            }
+
+            const data  = await response.json();
+            const reply = data.choices?.[0]?.message?.content
+                          || 'Xin lỗi, tôi không nhận được phản hồi. Vui lòng thử lại.';
+
+            // Save assistant reply for context continuity
+            conversationHistory.push({ role: 'assistant', content: reply });
+            return reply;
+        }
+
+        /* ── LOGIC: Handle send ─────────────────────────────── */
+        async function handleSend() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            appendMessage(text, true);
+            chatInput.value   = '';
+            chatInput.disabled = true;
+            chatSend.disabled  = true;
+
+            showTypingIndicator();
+
+            try {
+                const reply = await callOpenRouter(text);
+                removeTypingIndicator();
+                appendMessage(reply, false);
+            } catch (err) {
+                removeTypingIndicator();
+                // Roll back poisoned user turn from history
+                if (conversationHistory.at(-1)?.role === 'user') conversationHistory.pop();
+                appendMessage(
+                    `> ⚠️ **Lỗi kết nối:** ${err.message}\n\nVui lòng thử lại hoặc liên hệ:\n- 📧 **qtuan2k.sgp@gmail.com**\n- 📞 **+84 913 456 789**`,
+                    false
+                );
+            } finally {
+                chatInput.disabled = false;
+                chatSend.disabled  = false;
+                chatInput.focus();
+            }
+        }
+
+        chatSend.addEventListener('click', handleSend);
+        // Enter to send (Shift+Enter reserved for future multi-line use)
+        chatInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+        });
+
+    }); // end DOMContentLoaded
+
+})(); // end IIFE
 </script>
 </body></html>
